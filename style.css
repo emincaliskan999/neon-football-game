@@ -5,10 +5,10 @@
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background:
-    radial-gradient(circle at top, rgba(0, 255, 255, 0.08), transparent 30%),
-    linear-gradient(to bottom, #031018, #02060a 70%);
   color: white;
+  background:
+    radial-gradient(circle at top, rgba(0, 255, 255, 0.12), transparent 24%),
+    linear-gradient(to bottom, #02131b 0%, #010810 70%, #00050a 100%);
 }
 
 .page {
@@ -16,7 +16,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 12px 40px;
+  padding: 18px 12px 40px;
 }
 
 .hud {
@@ -25,14 +25,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .team-side {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 700;
 }
 
@@ -40,36 +40,106 @@ body {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: white;
   object-fit: cover;
+  background: #000;
+  border: 1px solid rgba(255,255,255,0.12);
 }
 
-.match-info {
-  font-size: 22px;
+.center-info {
+  text-align: center;
+}
+
+#matchStatus {
+  font-size: 14px;
+  opacity: 0.9;
+  margin-bottom: 2px;
+}
+
+#timer {
+  font-size: 20px;
   font-weight: 700;
-  opacity: 0.95;
+}
+
+.game-shell {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
 }
 
 canvas {
+  display: block;
   width: 100%;
   max-width: 420px;
   height: auto;
+  border-radius: 22px;
   background:
-    linear-gradient(to bottom, rgba(255,255,255,0.02), rgba(0,0,0,0.25)),
-    radial-gradient(circle at center, rgba(0,255,255,0.03), transparent 60%);
-  border-radius: 20px;
-  box-shadow: 0 0 30px rgba(0, 255, 255, 0.12);
+    linear-gradient(to bottom, rgba(255,255,255,0.025), rgba(0,0,0,0.18)),
+    radial-gradient(circle at center, rgba(0,255,255,0.03), transparent 65%);
+  box-shadow: 0 0 28px rgba(0, 255, 255, 0.12);
   touch-action: none;
-  display: block;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  background: rgba(0, 5, 10, 0.74);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 20;
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.overlay-card {
+  width: 100%;
+  max-width: 290px;
+  text-align: center;
+  padding: 22px 18px;
+  border-radius: 18px;
+  background: rgba(0, 10, 18, 0.9);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 0 20px rgba(0,255,255,0.08);
+}
+
+.overlay-card h1 {
+  margin: 0 0 10px;
+  font-size: 28px;
+}
+
+.overlay-card p {
+  margin: 0 0 18px;
+  color: rgba(255,255,255,0.82);
+}
+
+button {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#startBtn,
+#restartBtn,
+#applyBtn {
+  background: #78f7ff;
+  color: #00141a;
 }
 
 .controls-panel {
   width: 100%;
   max-width: 420px;
-  margin-top: 20px;
+  margin-top: 18px;
   padding: 16px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255,255,255,0.035);
   border: 1px solid rgba(255,255,255,0.08);
 }
 
@@ -87,32 +157,17 @@ canvas {
 
 .config-row label {
   font-size: 14px;
-  opacity: 0.9;
+  color: rgba(255,255,255,0.9);
 }
 
 .config-row input {
   background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
   color: white;
+  border: 1px solid rgba(255,255,255,0.12);
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 14px;
   outline: none;
-}
-
-button {
-  width: 100%;
-  border: none;
-  border-radius: 12px;
-  padding: 12px;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-#applyBtn {
-  background: #66f6ff;
-  color: #00151a;
+  font-size: 14px;
 }
 
 @media (max-width: 480px) {
@@ -125,7 +180,7 @@ button {
     height: 38px;
   }
 
-  .match-info {
+  #timer {
     font-size: 18px;
   }
 }
