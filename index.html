@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neon Football Game</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="page">
+    <div class="hud">
+      <div class="team-side left">
+        <img id="teamALogoHud" src="assets/team1.png" alt="Team 1 Logo" />
+        <span id="scoreA">0</span>
+      </div>
+
+      <div class="match-info">
+        <div id="timer">31'</div>
+      </div>
+
+      <div class="team-side right">
+        <span id="scoreB">0</span>
+        <img id="teamBLogoHud" src="assets/team2.png" alt="Team 2 Logo" />
+      </div>
+    </div>
+
+    <canvas id="gameCanvas" width="420" height="760"></canvas>
+
+    <div class="controls-panel">
+      <h2>Takım Ayarları</h2>
+
+      <div class="config-row">
+        <label>Takım 1 adı</label>
+        <input id="teamAName" type="text" value="Fenerbahçe" />
+      </div>
+
+      <div class="config-row">
+        <label>Takım 2 adı</label>
+        <input id="teamBName" type="text" value="Gençlerbirliği" />
+      </div>
+
+      <div class="config-row">
+        <label>Takım 1 logo yolu</label>
+        <input id="teamALogoPath" type="text" value="assets/team1.png" />
+      </div>
+
+      <div class="config-row">
+        <label>Takım 2 logo yolu</label>
+        <input id="teamBLogoPath" type="text" value="assets/team2.png" />
+      </div>
+
+      <button id="applyBtn">Uygula</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
