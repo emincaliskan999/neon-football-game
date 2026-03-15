@@ -1,0 +1,9 @@
+{
+  "name": "neon-football-game",
+  "version": "1.0.0",
+  "description": "Neon football browser game",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx serve ."
+  }
+}
