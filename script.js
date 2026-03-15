@@ -17,11 +17,11 @@ const H = canvas.height;
 
 const config = {
   teamA: {
-    name: "Fenerbahçe",
+    name: "Team 1",
     logo: "assets/team1.png"
   },
   teamB: {
-    name: "Gençlerbirliği",
+    name: "Team 2",
     logo: "assets/team2.png"
   }
 };
@@ -43,34 +43,29 @@ let scoreB = 0;
 
 const arena = {
   x: W / 2,
-  y: H / 2 + 20,
+  y: H / 2 + 70,
   r: 170
 };
 
-const goal = {
-  x: W / 2 + 65,
-  y: H / 2 - 180,
-  w: 72,
-  h: 26
-};
-
 const player = {
-  x: W / 2,
-  y: H / 2 + 110,
+  x: arena.x,
+  y: arena.y + 90,
   r: 24,
   vx: 0,
   vy: 0
 };
 
 const opponent = {
-  x: W / 2,
-  y: H / 2,
-  r: 24
+  x: arena.x,
+  y: arena.y - 10,
+  r: 24,
+  vx: 0,
+  vy: 0
 };
 
 const ball = {
-  x: W / 2 + 8,
-  y: H / 2 + 10,
+  x: arena.x + 8,
+  y: arena.y + 18,
   r: 9,
   vx: 0,
   vy: 0
@@ -80,28 +75,44 @@ let dragging = false;
 let dragStart = null;
 let dragCurrent = null;
 
+function getGoal() {
+  const angle = -Math.PI / 4;
+  const attachX = arena.x + Math.cos(angle) * arena.r;
+  const attachY = arena.y + Math.sin(angle) * arena.r;
+
+  return {
+    x: attachX - 10,
+    y: attachY - 28,
+    w: 72,
+    h: 26
+  };
+}
+
 function drawGlowCircle(x, y, r, color) {
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.strokeStyle = color;
   ctx.lineWidth = 4;
-  ctx.shadowBlur = 20;
+  ctx.shadowBlur = 24;
   ctx.shadowColor = color;
   ctx.stroke();
   ctx.shadowBlur = 0;
 }
 
 function drawArena() {
-  drawGlowCircle(arena.x, arena.y, arena.r, "#7bf7ff");
+  drawGlowCircle(arena.x, arena.y, arena.r, "#79f7ff");
+
+  const goal = getGoal();
 
   ctx.beginPath();
   ctx.moveTo(goal.x, goal.y + goal.h);
   ctx.lineTo(goal.x, goal.y);
   ctx.lineTo(goal.x + goal.w, goal.y);
   ctx.lineTo(goal.x + goal.w, goal.y + goal.h);
+
   ctx.strokeStyle = "#ffffff";
   ctx.lineWidth = 4;
-  ctx.shadowBlur = 14;
+  ctx.shadowBlur = 16;
   ctx.shadowColor = "#ffffff";
   ctx.stroke();
   ctx.shadowBlur = 0;
@@ -109,10 +120,11 @@ function drawArena() {
 
 function drawDisc(obj, img) {
   ctx.save();
+
   ctx.beginPath();
   ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI * 2);
   ctx.closePath();
-  ctx.fillStyle = "#d9d9d9";
+  ctx.fillStyle = "#111111";
   ctx.fill();
   ctx.lineWidth = 3;
   ctx.strokeStyle = "#ffffff";
@@ -127,7 +139,7 @@ function drawDisc(obj, img) {
 
   ctx.beginPath();
   ctx.arc(obj.x, obj.y, obj.r + 2, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(255,255,255,0.7)";
+  ctx.strokeStyle = "rgba(255,255,255,0.85)";
   ctx.lineWidth = 2;
   ctx.stroke();
 }
@@ -135,7 +147,7 @@ function drawDisc(obj, img) {
 function drawBall() {
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-  ctx.fillStyle = "#111111";
+  ctx.fillStyle = "#181818";
   ctx.fill();
 }
 
@@ -199,10 +211,15 @@ function circleCollision(a, b) {
 }
 
 function checkGoal() {
-  const inGoalX = ball.x > goal.x && ball.x < goal.x + goal.w;
-  const inGoalY = ball.y - ball.r < goal.y + goal.h && ball.y + ball.r > goal.y;
+  const goal = getGoal();
 
-  if (inGoalX && inGoalY) {
+  const ballInsideGoal =
+    ball.x + ball.r > goal.x &&
+    ball.x - ball.r < goal.x + goal.w &&
+    ball.y + ball.r > goal.y &&
+    ball.y - ball.r < goal.y + goal.h;
+
+  if (ballInsideGoal) {
     scoreA += 1;
     scoreAEl.textContent = scoreA;
     resetPositions();
@@ -210,18 +227,18 @@ function checkGoal() {
 }
 
 function resetPositions() {
-  player.x = W / 2;
-  player.y = H / 2 + 110;
+  player.x = arena.x;
+  player.y = arena.y + 90;
   player.vx = 0;
   player.vy = 0;
 
-  opponent.x = W / 2;
-  opponent.y = H / 2;
+  opponent.x = arena.x;
+  opponent.y = arena.y - 10;
   opponent.vx = 0;
   opponent.vy = 0;
 
-  ball.x = W / 2 + 8;
-  ball.y = H / 2 + 10;
+  ball.x = arena.x + 8;
+  ball.y = arena.y + 18;
   ball.vx = 0;
   ball.vy = 0;
 }
@@ -275,15 +292,19 @@ canvas.addEventListener("mouseup", pointerUp);
 canvas.addEventListener("mouseleave", pointerUp);
 
 canvas.addEventListener("touchstart", pointerDown);
-canvas.addEventListener("touchmove", (e) => {
-  pointerMove(e);
-  e.preventDefault();
-}, { passive: false });
+canvas.addEventListener(
+  "touchmove",
+  (e) => {
+    pointerMove(e);
+    e.preventDefault();
+  },
+  { passive: false }
+);
 canvas.addEventListener("touchend", pointerUp);
 
 applyBtn.addEventListener("click", () => {
-  config.teamA.name = teamANameInput.value.trim() || "Takım 1";
-  config.teamB.name = teamBNameInput.value.trim() || "Takım 2";
+  config.teamA.name = teamANameInput.value.trim() || "Team 1";
+  config.teamB.name = teamBNameInput.value.trim() || "Team 2";
   config.teamA.logo = teamALogoPathInput.value.trim() || "assets/team1.png";
   config.teamB.logo = teamBLogoPathInput.value.trim() || "assets/team2.png";
 
