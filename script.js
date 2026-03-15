@@ -9,12 +9,6 @@ const matchStatusEl = document.getElementById("matchStatus");
 const teamALogoHud = document.getElementById("teamALogoHud");
 const teamBLogoHud = document.getElementById("teamBLogoHud");
 
-const teamANameInput = document.getElementById("teamAName");
-const teamBNameInput = document.getElementById("teamBName");
-const teamALogoPathInput = document.getElementById("teamALogoPath");
-const teamBLogoPathInput = document.getElementById("teamBLogoPath");
-const applyBtn = document.getElementById("applyBtn");
-
 const startOverlay = document.getElementById("startOverlay");
 const winnerOverlay = document.getElementById("winnerOverlay");
 const winnerText = document.getElementById("winnerText");
@@ -25,8 +19,10 @@ const W = canvas.width;
 const H = canvas.height;
 
 const WIN_SCORE = 3;
-const FRICTION = 0.988;
+const FRICTION = 0.992;
 const DISC_RADIUS = 24;
+const PLAYER_MAX_SPEED = 8.5;
+const BOT_MAX_SPEED = 4.2;
 
 const config = {
   teamA: {
@@ -48,11 +44,12 @@ function loadLogos() {
   teamALogoHud.src = config.teamA.logo;
   teamBLogoHud.src = config.teamB.logo;
 }
-
 loadLogos();
 
 let scoreA = 0;
 let scoreB = 0;
+let displayedMinute = 1;
+let tickCount = 0;
 let gameRunning = false;
 let gameFinished = false;
 
@@ -60,30 +57,30 @@ let dragging = false;
 let dragStart = null;
 let dragCurrent = null;
 
-let tickCount = 0;
-let displayedMinute = 1;
-
 const arena = {
   x: W / 2,
-  y: H / 2 + 92,
+  y: H / 2 + 85,
   r: 170
 };
 
 const player = {
-  x: arena.x,
-  y: arena.y + 82,
+  x: arena.x - 10,
+  y: arena.y + 75,
   r: DISC_RADIUS,
   vx: 0,
   vy: 0
 };
 
 const opponent = {
-  x: arena.x,
-  y: arena.y - 22,
+  x: arena.x + 10,
+  y: arena.y - 50,
   r: DISC_RADIUS,
   vx: 0,
   vy: 0
 };
+
+let goalAngle = -0.72;
+const goalSpinSpeed = 0.01;
 
 function setHud() {
   scoreAEl.textContent = scoreA;
@@ -101,13 +98,13 @@ function setHud() {
 }
 
 function resetPositions() {
-  player.x = arena.x;
-  player.y = arena.y + 82;
+  player.x = arena.x - 10;
+  player.y = arena.y + 75;
   player.vx = 0;
   player.vy = 0;
 
-  opponent.x = arena.x;
-  opponent.y = arena.y - 22;
+  opponent.x = arena.x + 10;
+  opponent.y = arena.y - 50;
   opponent.vx = 0;
   opponent.vy = 0;
 }
@@ -121,17 +118,17 @@ function resetMatch() {
   dragStart = null;
   dragCurrent = null;
   gameFinished = false;
+  goalAngle = -0.72;
   resetPositions();
   setHud();
 }
 
 function getGoal() {
-  const angle = -0.72; // üst-sağ
   const openingWidth = 72;
   const depth = 26;
 
-  const nx = Math.cos(angle);
-  const ny = Math.sin(angle);
+  const nx = Math.cos(goalAngle);
+  const ny = Math.sin(goalAngle);
 
   const tx = -ny;
   const ty = nx;
@@ -140,15 +137,14 @@ function getGoal() {
   const cy = arena.y + ny * arena.r;
 
   return {
-    angle,
     cx,
     cy,
-    openingWidth,
-    depth,
     nx,
     ny,
     tx,
-    ty
+    ty,
+    openingWidth,
+    depth
   };
 }
 
@@ -238,24 +234,31 @@ function drawAimLine() {
   ctx.shadowBlur = 0;
 }
 
+function limitSpeed(obj, maxSpeed) {
+  const speed = Math.hypot(obj.vx, obj.vy);
+  if (speed > maxSpeed) {
+    obj.vx = (obj.vx / speed) * maxSpeed;
+    obj.vy = (obj.vy / speed) * maxSpeed;
+  }
+}
+
 function clampToArena(obj) {
   const dx = obj.x - arena.x;
   const dy = obj.y - arena.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
+  const dist = Math.hypot(dx, dy);
   const maxDist = arena.r - obj.r;
 
   if (dist > maxDist) {
-    const angle = Math.atan2(dy, dx);
-    obj.x = arena.x + Math.cos(angle) * maxDist;
-    obj.y = arena.y + Math.sin(angle) * maxDist;
+    const nx = dx / dist;
+    const ny = dy / dist;
 
-    const nx = Math.cos(angle);
-    const ny = Math.sin(angle);
+    obj.x = arena.x + nx * maxDist;
+    obj.y = arena.y + ny * maxDist;
+
     const dot = obj.vx * nx + obj.vy * ny;
-
     if (dot > 0) {
-      obj.vx -= nx * dot;
-      obj.vy -= ny * dot;
+      obj.vx -= nx * dot * 1.65;
+      obj.vy -= ny * dot * 1.65;
     }
   }
 }
@@ -276,7 +279,7 @@ function updatePhysics(obj) {
 function resolveCollision(a, b) {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
+  const dist = Math.hypot(dx, dy);
   const minDist = a.r + b.r;
 
   if (dist === 0 || dist >= minDist) return;
@@ -290,70 +293,52 @@ function resolveCollision(a, b) {
   b.x += nx * overlap * 0.5;
   b.y += ny * overlap * 0.5;
 
-  const rvx = b.vx - a.vx;
-  const rvy = b.vy - a.vy;
-  const velAlongNormal = rvx * nx + rvy * ny;
+  const tx = -ny;
+  const ty = nx;
 
-  if (velAlongNormal > 0) return;
+  const dpTanA = a.vx * tx + a.vy * ty;
+  const dpTanB = b.vx * tx + b.vy * ty;
 
-  const restitution = 0.92;
-  const impulse = -(1 + restitution) * velAlongNormal / 2;
-  const ix = impulse * nx;
-  const iy = impulse * ny;
+  const dpNormA = a.vx * nx + a.vy * ny;
+  const dpNormB = b.vx * nx + b.vy * ny;
 
-  a.vx -= ix;
-  a.vy -= iy;
-  b.vx += ix;
-  b.vy += iy;
+  const newNormA = dpNormB;
+  const newNormB = dpNormA;
+
+  a.vx = tx * dpTanA + nx * newNormA;
+  a.vy = ty * dpTanA + ny * newNormA;
+  b.vx = tx * dpTanB + nx * newNormB;
+  b.vy = ty * dpTanB + ny * newNormB;
+
+  a.vx *= 0.98;
+  a.vy *= 0.98;
+  b.vx *= 0.98;
+  b.vy *= 0.98;
 }
 
 function updateOpponentAI() {
   if (!gameRunning || gameFinished) return;
 
-  const goal = getGoal();
+  const dx = player.x - opponent.x;
+  const dy = player.y - opponent.y;
+  const dist = Math.hypot(dx, dy) || 1;
 
-  const wantX = goal.cx - goal.nx * 88;
-  const wantY = goal.cy - goal.ny * 88;
+  opponent.vx += (dx / dist) * 0.065;
+  opponent.vy += (dy / dist) * 0.065;
 
-  let targetX = wantX;
-  let targetY = wantY;
-
-  const playerCloserToGoal =
-    Math.hypot(player.x - goal.cx, player.y - goal.cy) <
-    Math.hypot(opponent.x - goal.cx, opponent.y - goal.cy);
-
-  if (playerCloserToGoal) {
-    targetX = player.x;
-    targetY = player.y;
-  }
-
-  const dx = targetX - opponent.x;
-  const dy = targetY - opponent.y;
-  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-
-  opponent.vx += (dx / dist) * 0.12;
-  opponent.vy += (dy / dist) * 0.12;
-
-  const maxSpeed = 2.6;
-  const speed = Math.sqrt(opponent.vx * opponent.vx + opponent.vy * opponent.vy);
-
-  if (speed > maxSpeed) {
-    opponent.vx = (opponent.vx / speed) * maxSpeed;
-    opponent.vy = (opponent.vy / speed) * maxSpeed;
-  }
+  limitSpeed(opponent, BOT_MAX_SPEED);
 }
 
 function discEnteredGoal(disc) {
   const goal = getGoal();
-
   const dx = disc.x - goal.cx;
   const dy = disc.y - goal.cy;
 
   const localT = dx * goal.tx + dy * goal.ty;
   const localN = dx * goal.nx + dy * goal.ny;
 
-  const insideWidth = Math.abs(localT) <= goal.openingWidth / 2 - disc.r * 0.2;
-  const insideDepth = localN >= 0 && localN <= goal.depth + disc.r * 0.8;
+  const insideWidth = Math.abs(localT) <= goal.openingWidth / 2 - disc.r * 0.15;
+  const insideDepth = localN >= -disc.r * 0.15 && localN <= goal.depth + disc.r * 0.75;
 
   return insideWidth && insideDepth;
 }
@@ -408,7 +393,7 @@ function pointerDown(e) {
   const p = getPointerPos(e);
   const dx = p.x - player.x;
   const dy = p.y - player.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
+  const dist = Math.hypot(dx, dy);
 
   if (dist <= player.r + 18) {
     dragging = true;
@@ -430,19 +415,13 @@ function pointerUp() {
     return;
   }
 
-  const powerX = (dragStart.x - dragCurrent.x) * 0.085;
-  const powerY = (dragStart.y - dragCurrent.y) * 0.085;
+  const powerX = (dragStart.x - dragCurrent.x) * 0.09;
+  const powerY = (dragStart.y - dragCurrent.y) * 0.09;
 
   player.vx += powerX;
   player.vy += powerY;
 
-  const maxLaunch = 8.6;
-  const speed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
-
-  if (speed > maxLaunch) {
-    player.vx = (player.vx / speed) * maxLaunch;
-    player.vy = (player.vy / speed) * maxLaunch;
-  }
+  limitSpeed(player, PLAYER_MAX_SPEED);
 
   dragging = false;
   dragStart = null;
@@ -464,14 +443,6 @@ canvas.addEventListener(
   { passive: false }
 );
 canvas.addEventListener("touchend", pointerUp);
-
-applyBtn.addEventListener("click", () => {
-  config.teamA.name = teamANameInput.value.trim() || "Team 1";
-  config.teamB.name = teamBNameInput.value.trim() || "Team 2";
-  config.teamA.logo = teamALogoPathInput.value.trim() || "assets/team1.png";
-  config.teamB.logo = teamBLogoPathInput.value.trim() || "assets/team2.png";
-  loadLogos();
-});
 
 startBtn.addEventListener("click", () => {
   resetMatch();
@@ -503,13 +474,16 @@ function update() {
   if (!gameRunning || gameFinished) return;
 
   updateClock();
+
+  goalAngle += goalSpinSpeed;
+  if (goalAngle > Math.PI * 2) goalAngle -= Math.PI * 2;
+
   updateOpponentAI();
 
   updatePhysics(player);
   updatePhysics(opponent);
 
   resolveCollision(player, opponent);
-
   checkGoalScored();
 }
 
