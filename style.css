@@ -16,7 +16,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 18px 12px 40px;
+  padding: 18px 12px 28px;
 }
 
 .hud {
@@ -124,50 +124,8 @@ button {
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-}
-
-#startBtn,
-#restartBtn,
-#applyBtn {
   background: #78f7ff;
   color: #00141a;
-}
-
-.controls-panel {
-  width: 100%;
-  max-width: 420px;
-  margin-top: 18px;
-  padding: 16px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.controls-panel h2 {
-  margin: 0 0 14px;
-  font-size: 20px;
-}
-
-.config-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.config-row label {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.config-row input {
-  background: rgba(255, 255, 255, 0.08);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  padding: 10px 12px;
-  outline: none;
-  font-size: 14px;
 }
 
 @media (max-width: 480px) {
