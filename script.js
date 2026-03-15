@@ -19,10 +19,11 @@ const W = canvas.width;
 const H = canvas.height;
 
 const WIN_SCORE = 3;
-const FRICTION = 0.992;
+const FRICTION = 0.996;
+const WALL_BOUNCE = 0.96;
 const DISC_RADIUS = 24;
-const PLAYER_MAX_SPEED = 8.5;
-const BOT_MAX_SPEED = 4.2;
+const PLAYER_MAX_SPEED = 8.6;
+const BOT_MAX_SPEED = 3.8;
 
 const config = {
   teamA: {
@@ -64,16 +65,16 @@ const arena = {
 };
 
 const player = {
-  x: arena.x - 10,
-  y: arena.y + 75,
+  x: 0,
+  y: 0,
   r: DISC_RADIUS,
   vx: 0,
   vy: 0
 };
 
 const opponent = {
-  x: arena.x + 10,
-  y: arena.y - 50,
+  x: 0,
+  y: 0,
   r: DISC_RADIUS,
   vx: 0,
   vy: 0
@@ -98,13 +99,13 @@ function setHud() {
 }
 
 function resetPositions() {
-  player.x = arena.x - 10;
-  player.y = arena.y + 75;
+  player.x = arena.x - 52;
+  player.y = arena.y + 58;
   player.vx = 0;
   player.vy = 0;
 
-  opponent.x = arena.x + 10;
-  opponent.y = arena.y - 50;
+  opponent.x = arena.x + 52;
+  opponent.y = arena.y - 58;
   opponent.vx = 0;
   opponent.vy = 0;
 }
@@ -242,25 +243,28 @@ function limitSpeed(obj, maxSpeed) {
   }
 }
 
-function clampToArena(obj) {
+function bounceOffArena(obj) {
   const dx = obj.x - arena.x;
   const dy = obj.y - arena.y;
   const dist = Math.hypot(dx, dy);
   const maxDist = arena.r - obj.r;
 
-  if (dist > maxDist) {
-    const nx = dx / dist;
-    const ny = dy / dist;
+  if (dist <= maxDist || dist === 0) return;
 
-    obj.x = arena.x + nx * maxDist;
-    obj.y = arena.y + ny * maxDist;
+  const nx = dx / dist;
+  const ny = dy / dist;
 
-    const dot = obj.vx * nx + obj.vy * ny;
-    if (dot > 0) {
-      obj.vx -= nx * dot * 1.65;
-      obj.vy -= ny * dot * 1.65;
-    }
+  obj.x = arena.x + nx * maxDist;
+  obj.y = arena.y + ny * maxDist;
+
+  const vn = obj.vx * nx + obj.vy * ny;
+  if (vn > 0) {
+    obj.vx = obj.vx - (1 + WALL_BOUNCE) * vn * nx;
+    obj.vy = obj.vy - (1 + WALL_BOUNCE) * vn * ny;
   }
+
+  obj.vx *= 0.995;
+  obj.vy *= 0.995;
 }
 
 function updatePhysics(obj) {
@@ -273,7 +277,7 @@ function updatePhysics(obj) {
   if (Math.abs(obj.vx) < 0.01) obj.vx = 0;
   if (Math.abs(obj.vy) < 0.01) obj.vy = 0;
 
-  clampToArena(obj);
+  bounceOffArena(obj);
 }
 
 function resolveCollision(a, b) {
@@ -296,35 +300,48 @@ function resolveCollision(a, b) {
   const tx = -ny;
   const ty = nx;
 
-  const dpTanA = a.vx * tx + a.vy * ty;
-  const dpTanB = b.vx * tx + b.vy * ty;
+  const aTan = a.vx * tx + a.vy * ty;
+  const bTan = b.vx * tx + b.vy * ty;
 
-  const dpNormA = a.vx * nx + a.vy * ny;
-  const dpNormB = b.vx * nx + b.vy * ny;
+  const aNorm = a.vx * nx + a.vy * ny;
+  const bNorm = b.vx * nx + b.vy * ny;
 
-  const newNormA = dpNormB;
-  const newNormB = dpNormA;
+  const newANorm = bNorm * 0.98;
+  const newBNorm = aNorm * 0.98;
 
-  a.vx = tx * dpTanA + nx * newNormA;
-  a.vy = ty * dpTanA + ny * newNormA;
-  b.vx = tx * dpTanB + nx * newNormB;
-  b.vy = ty * dpTanB + ny * newNormB;
+  a.vx = tx * aTan + nx * newANorm;
+  a.vy = ty * aTan + ny * newANorm;
+  b.vx = tx * bTan + nx * newBNorm;
+  b.vy = ty * bTan + ny * newBNorm;
 
-  a.vx *= 0.98;
-  a.vy *= 0.98;
-  b.vx *= 0.98;
-  b.vy *= 0.98;
+  limitSpeed(a, PLAYER_MAX_SPEED);
+  limitSpeed(b, BOT_MAX_SPEED + 2.5);
 }
 
 function updateOpponentAI() {
   if (!gameRunning || gameFinished) return;
 
-  const dx = player.x - opponent.x;
-  const dy = player.y - opponent.y;
+  const goal = getGoal();
+  const defendX = goal.cx - goal.nx * 95;
+  const defendY = goal.cy - goal.ny * 95;
+
+  let targetX = defendX;
+  let targetY = defendY;
+
+  const playerNearGoal =
+    Math.hypot(player.x - goal.cx, player.y - goal.cy) < 125;
+
+  if (playerNearGoal) {
+    targetX = player.x;
+    targetY = player.y;
+  }
+
+  const dx = targetX - opponent.x;
+  const dy = targetY - opponent.y;
   const dist = Math.hypot(dx, dy) || 1;
 
-  opponent.vx += (dx / dist) * 0.065;
-  opponent.vy += (dy / dist) * 0.065;
+  opponent.vx += (dx / dist) * 0.05;
+  opponent.vy += (dy / dist) * 0.05;
 
   limitSpeed(opponent, BOT_MAX_SPEED);
 }
@@ -484,6 +501,10 @@ function update() {
   updatePhysics(opponent);
 
   resolveCollision(player, opponent);
+
+  bounceOffArena(player);
+  bounceOffArena(opponent);
+
   checkGoalScored();
 }
 
