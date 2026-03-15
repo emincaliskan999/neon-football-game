@@ -25,9 +25,8 @@ const W = canvas.width;
 const H = canvas.height;
 
 const WIN_SCORE = 3;
-const FRICTION = 0.989;
+const FRICTION = 0.988;
 const DISC_RADIUS = 24;
-const BALL_RADIUS = 10;
 
 const config = {
   teamA: {
@@ -54,19 +53,19 @@ loadLogos();
 
 let scoreA = 0;
 let scoreB = 0;
-
 let gameRunning = false;
 let gameFinished = false;
+
 let dragging = false;
 let dragStart = null;
 let dragCurrent = null;
 
 let tickCount = 0;
-let displayedMinute = 31;
+let displayedMinute = 1;
 
 const arena = {
   x: W / 2,
-  y: H / 2 + 82,
+  y: H / 2 + 92,
   r: 170
 };
 
@@ -80,16 +79,8 @@ const player = {
 
 const opponent = {
   x: arena.x,
-  y: arena.y - 76,
+  y: arena.y - 22,
   r: DISC_RADIUS,
-  vx: 0,
-  vy: 0
-};
-
-const ball = {
-  x: arena.x,
-  y: arena.y,
-  r: BALL_RADIUS,
   vx: 0,
   vy: 0
 };
@@ -103,84 +94,62 @@ function setHud() {
   } else if (gameRunning) {
     timerEl.textContent = `${displayedMinute}'`;
   } else {
-    timerEl.textContent = "Kickoff";
+    timerEl.textContent = "1'";
   }
 
   matchStatusEl.textContent = `BO5 • First to ${WIN_SCORE}`;
 }
 
-function resetPositions(lastScoredBy = null) {
+function resetPositions() {
   player.x = arena.x;
   player.y = arena.y + 82;
   player.vx = 0;
   player.vy = 0;
 
   opponent.x = arena.x;
-  opponent.y = arena.y - 76;
+  opponent.y = arena.y - 22;
   opponent.vx = 0;
   opponent.vy = 0;
-
-  ball.x = arena.x;
-  ball.y = arena.y;
-  ball.vx = 0;
-  ball.vy = 0;
-
-  if (lastScoredBy === "A") {
-    ball.y -= 10;
-  } else if (lastScoredBy === "B") {
-    ball.y += 10;
-  }
 }
 
 function resetMatch() {
   scoreA = 0;
   scoreB = 0;
-  gameFinished = false;
-  displayedMinute = 31;
+  displayedMinute = 1;
   tickCount = 0;
+  dragging = false;
+  dragStart = null;
+  dragCurrent = null;
+  gameFinished = false;
   resetPositions();
   setHud();
 }
 
-function getTopGoal() {
+function getGoal() {
+  const angle = -0.72; // üst-sağ
+  const openingWidth = 72;
+  const depth = 26;
+
+  const nx = Math.cos(angle);
+  const ny = Math.sin(angle);
+
+  const tx = -ny;
+  const ty = nx;
+
+  const cx = arena.x + nx * arena.r;
+  const cy = arena.y + ny * arena.r;
+
   return {
-    x: arena.x + 112,
-    y: arena.y - 148,
-    w: 74,
-    h: 28
+    angle,
+    cx,
+    cy,
+    openingWidth,
+    depth,
+    nx,
+    ny,
+    tx,
+    ty
   };
-}
-
-function getBottomGoal() {
-  return {
-    x: arena.x - 186,
-    y: arena.y + 122,
-    w: 74,
-    h: 28
-  };
-}
-
-function drawGoal(goal, upsideDown = false) {
-  ctx.beginPath();
-
-  if (!upsideDown) {
-    ctx.moveTo(goal.x, goal.y + goal.h);
-    ctx.lineTo(goal.x, goal.y);
-    ctx.lineTo(goal.x + goal.w, goal.y);
-    ctx.lineTo(goal.x + goal.w, goal.y + goal.h);
-  } else {
-    ctx.moveTo(goal.x, goal.y);
-    ctx.lineTo(goal.x, goal.y + goal.h);
-    ctx.lineTo(goal.x + goal.w, goal.y + goal.h);
-    ctx.lineTo(goal.x + goal.w, goal.y);
-  }
-
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 4;
-  ctx.shadowBlur = 16;
-  ctx.shadowColor = "#ffffff";
-  ctx.stroke();
-  ctx.shadowBlur = 0;
 }
 
 function drawGlowCircle(x, y, r, color) {
@@ -194,10 +163,39 @@ function drawGlowCircle(x, y, r, color) {
   ctx.shadowBlur = 0;
 }
 
+function drawGoal() {
+  const goal = getGoal();
+  const half = goal.openingWidth / 2;
+
+  const leftX = goal.cx - goal.tx * half;
+  const leftY = goal.cy - goal.ty * half;
+
+  const rightX = goal.cx + goal.tx * half;
+  const rightY = goal.cy + goal.ty * half;
+
+  const backLeftX = leftX + goal.nx * goal.depth;
+  const backLeftY = leftY + goal.ny * goal.depth;
+
+  const backRightX = rightX + goal.nx * goal.depth;
+  const backRightY = rightY + goal.ny * goal.depth;
+
+  ctx.beginPath();
+  ctx.moveTo(leftX, leftY);
+  ctx.lineTo(backLeftX, backLeftY);
+  ctx.lineTo(backRightX, backRightY);
+  ctx.lineTo(rightX, rightY);
+
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 4;
+  ctx.shadowBlur = 16;
+  ctx.shadowColor = "#ffffff";
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
 function drawArena() {
   drawGlowCircle(arena.x, arena.y, arena.r, "#79f7ff");
-  drawGoal(getTopGoal(), false);
-  drawGoal(getBottomGoal(), true);
+  drawGoal();
 }
 
 function drawDisc(obj, img) {
@@ -226,13 +224,6 @@ function drawDisc(obj, img) {
   ctx.stroke();
 }
 
-function drawBall() {
-  ctx.beginPath();
-  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-  ctx.fillStyle = "#171717";
-  ctx.fill();
-}
-
 function drawAimLine() {
   if (!dragging || !dragCurrent || !gameRunning || gameFinished) return;
 
@@ -258,10 +249,13 @@ function clampToArena(obj) {
     obj.x = arena.x + Math.cos(angle) * maxDist;
     obj.y = arena.y + Math.sin(angle) * maxDist;
 
-    const dot = obj.vx * Math.cos(angle) + obj.vy * Math.sin(angle);
+    const nx = Math.cos(angle);
+    const ny = Math.sin(angle);
+    const dot = obj.vx * nx + obj.vy * ny;
+
     if (dot > 0) {
-      obj.vx -= Math.cos(angle) * dot;
-      obj.vy -= Math.sin(angle) * dot;
+      obj.vx -= nx * dot;
+      obj.vy -= ny * dot;
     }
   }
 }
@@ -269,6 +263,7 @@ function clampToArena(obj) {
 function updatePhysics(obj) {
   obj.x += obj.vx;
   obj.y += obj.vy;
+
   obj.vx *= FRICTION;
   obj.vy *= FRICTION;
 
@@ -278,7 +273,7 @@ function updatePhysics(obj) {
   clampToArena(obj);
 }
 
-function resolveCollision(a, b, pushBoth = true) {
+function resolveCollision(a, b) {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
@@ -290,15 +285,10 @@ function resolveCollision(a, b, pushBoth = true) {
   const ny = dy / dist;
   const overlap = minDist - dist;
 
-  if (pushBoth) {
-    a.x -= nx * (overlap * 0.5);
-    a.y -= ny * (overlap * 0.5);
-    b.x += nx * (overlap * 0.5);
-    b.y += ny * (overlap * 0.5);
-  } else {
-    b.x += nx * overlap;
-    b.y += ny * overlap;
-  }
+  a.x -= nx * overlap * 0.5;
+  a.y -= ny * overlap * 0.5;
+  b.x += nx * overlap * 0.5;
+  b.y += ny * overlap * 0.5;
 
   const rvx = b.vx - a.vx;
   const rvy = b.vy - a.vy;
@@ -308,24 +298,34 @@ function resolveCollision(a, b, pushBoth = true) {
 
   const restitution = 0.92;
   const impulse = -(1 + restitution) * velAlongNormal / 2;
-  const impulseX = impulse * nx;
-  const impulseY = impulse * ny;
+  const ix = impulse * nx;
+  const iy = impulse * ny;
 
-  a.vx -= impulseX;
-  a.vy -= impulseY;
-  b.vx += impulseX;
-  b.vy += impulseY;
-}
-
-function distance(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
+  a.vx -= ix;
+  a.vy -= iy;
+  b.vx += ix;
+  b.vy += iy;
 }
 
 function updateOpponentAI() {
   if (!gameRunning || gameFinished) return;
 
-  const targetX = ball.x;
-  const targetY = ball.y - 24;
+  const goal = getGoal();
+
+  const wantX = goal.cx - goal.nx * 88;
+  const wantY = goal.cy - goal.ny * 88;
+
+  let targetX = wantX;
+  let targetY = wantY;
+
+  const playerCloserToGoal =
+    Math.hypot(player.x - goal.cx, player.y - goal.cy) <
+    Math.hypot(opponent.x - goal.cx, opponent.y - goal.cy);
+
+  if (playerCloserToGoal) {
+    targetX = player.x;
+    targetY = player.y;
+  }
 
   const dx = targetX - opponent.x;
   const dy = targetY - opponent.y;
@@ -334,7 +334,7 @@ function updateOpponentAI() {
   opponent.vx += (dx / dist) * 0.12;
   opponent.vy += (dy / dist) * 0.12;
 
-  const maxSpeed = 2.8;
+  const maxSpeed = 2.6;
   const speed = Math.sqrt(opponent.vx * opponent.vx + opponent.vy * opponent.vy);
 
   if (speed > maxSpeed) {
@@ -343,37 +343,42 @@ function updateOpponentAI() {
   }
 }
 
+function discEnteredGoal(disc) {
+  const goal = getGoal();
+
+  const dx = disc.x - goal.cx;
+  const dy = disc.y - goal.cy;
+
+  const localT = dx * goal.tx + dy * goal.ty;
+  const localN = dx * goal.nx + dy * goal.ny;
+
+  const insideWidth = Math.abs(localT) <= goal.openingWidth / 2 - disc.r * 0.2;
+  const insideDepth = localN >= 0 && localN <= goal.depth + disc.r * 0.8;
+
+  return insideWidth && insideDepth;
+}
+
 function checkGoalScored() {
-  const topGoal = getTopGoal();
-  const bottomGoal = getBottomGoal();
-
-  const inTopGoal =
-    ball.x + ball.r > topGoal.x &&
-    ball.x - ball.r < topGoal.x + topGoal.w &&
-    ball.y + ball.r > topGoal.y &&
-    ball.y - ball.r < topGoal.y + topGoal.h;
-
-  const inBottomGoal =
-    ball.x + ball.r > bottomGoal.x &&
-    ball.x - ball.r < bottomGoal.x + bottomGoal.w &&
-    ball.y + ball.r > bottomGoal.y &&
-    ball.y - ball.r < bottomGoal.y + bottomGoal.h;
-
-  if (inTopGoal) {
+  if (discEnteredGoal(player)) {
     scoreA += 1;
     setHud();
+
     if (scoreA >= WIN_SCORE) {
       endMatch(config.teamA.name);
     } else {
-      resetPositions("A");
+      resetPositions();
     }
-  } else if (inBottomGoal) {
+    return;
+  }
+
+  if (discEnteredGoal(opponent)) {
     scoreB += 1;
     setHud();
+
     if (scoreB >= WIN_SCORE) {
       endMatch(config.teamB.name);
     } else {
-      resetPositions("B");
+      resetPositions();
     }
   }
 }
@@ -431,8 +436,9 @@ function pointerUp() {
   player.vx += powerX;
   player.vy += powerY;
 
-  const maxLaunch = 8.5;
+  const maxLaunch = 8.6;
   const speed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+
   if (speed > maxLaunch) {
     player.vx = (player.vx / speed) * maxLaunch;
     player.vy = (player.vy / speed) * maxLaunch;
@@ -485,8 +491,8 @@ restartBtn.addEventListener("click", () => {
 
 function updateClock() {
   if (!gameRunning || gameFinished) return;
-  tickCount += 1;
 
+  tickCount += 1;
   if (tickCount % 240 === 0 && displayedMinute < 90) {
     displayedMinute += 1;
     setHud();
@@ -501,11 +507,8 @@ function update() {
 
   updatePhysics(player);
   updatePhysics(opponent);
-  updatePhysics(ball);
 
-  resolveCollision(player, opponent, true);
-  resolveCollision(player, ball, false);
-  resolveCollision(opponent, ball, false);
+  resolveCollision(player, opponent);
 
   checkGoalScored();
 }
@@ -516,7 +519,6 @@ function render() {
   drawAimLine();
   drawDisc(opponent, teamBLogoImg);
   drawDisc(player, teamALogoImg);
-  drawBall();
 }
 
 function loop() {
