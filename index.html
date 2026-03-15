@@ -3,40 +3,59 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Neon Football Game</title>
+  <title>Neon Football BO5</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="page">
     <div class="hud">
-      <div class="team-side left">
-        <img id="teamALogoHud" src="assets/team1.png" alt="Team 1 Logo" />
+      <div class="team-side">
+        <img id="teamALogoHud" src="assets/team1.png" alt="Takım 1" />
         <span id="scoreA">0</span>
       </div>
 
-      <div class="match-info">
-        <div id="timer">31'</div>
+      <div class="center-info">
+        <div id="matchStatus">BO5 • First to 3</div>
+        <div id="timer">Kickoff</div>
       </div>
 
-      <div class="team-side right">
+      <div class="team-side">
         <span id="scoreB">0</span>
-        <img id="teamBLogoHud" src="assets/team2.png" alt="Team 2 Logo" />
+        <img id="teamBLogoHud" src="assets/team2.png" alt="Takım 2" />
       </div>
     </div>
 
-    <canvas id="gameCanvas" width="420" height="760"></canvas>
+    <div class="game-shell">
+      <canvas id="gameCanvas" width="420" height="760"></canvas>
+
+      <div id="startOverlay" class="overlay">
+        <div class="overlay-card">
+          <h1>Neon Football</h1>
+          <p>BO5 format • 3 gol atan kazanır</p>
+          <button id="startBtn">Maçı Başlat</button>
+        </div>
+      </div>
+
+      <div id="winnerOverlay" class="overlay hidden">
+        <div class="overlay-card">
+          <h1 id="winnerText">Kazanan</h1>
+          <p>Seri tamamlandı</p>
+          <button id="restartBtn">Tekrar Oyna</button>
+        </div>
+      </div>
+    </div>
 
     <div class="controls-panel">
       <h2>Takım Ayarları</h2>
 
       <div class="config-row">
         <label>Takım 1 adı</label>
-        <input id="teamAName" type="text" value="Fenerbahçe" />
+        <input id="teamAName" type="text" value="Team 1" />
       </div>
 
       <div class="config-row">
         <label>Takım 2 adı</label>
-        <input id="teamBName" type="text" value="Gençlerbirliği" />
+        <input id="teamBName" type="text" value="Team 2" />
       </div>
 
       <div class="config-row">
@@ -49,7 +68,7 @@
         <input id="teamBLogoPath" type="text" value="assets/team2.png" />
       </div>
 
-      <button id="applyBtn">Uygula</button>
+      <button id="applyBtn">Ayarları Uygula</button>
     </div>
   </div>
 
